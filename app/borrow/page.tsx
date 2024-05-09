@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import Image from "next/image"
 import foxIcon from "@/public/foxylend-logo.svg"
 import seiWhiteIcon from "@/public/sei-white.svg"
-import { fetchStatistic } from "@/services/common/fetchStatistic"
 import { Separator } from "@radix-ui/react-separator"
 import { useCosmWasmClient, useWallet } from "@sei-js/react"
 import { Search } from "lucide-react"
@@ -58,21 +57,8 @@ export default function Borrow() {
   const [openModal, setOpenModal] = useState(false)
 
   const [totalStaked, setTotalStaked] = useState(0)
-  const [totalClaimedPoints, setTotalClaimedPoints] = useState(0)
-  const [isNFTLoading, setIsNFTLoading] = useState(true)
-  const [statisticLoading, setStatisticLoading] = useState(true)
-  const fetchUnsteikCount = async () => {
-    const response = await queryClient?.queryContractSmart(
-      process.env.NEXT_PUBLIC_STEIK_ADDRESS || "",
-      {
-        get_steiker_info: { address: accounts[0]?.address, limit: 30 },
-      }
-    )
-    console.log(accounts, "accounts")
-    console.log(response, "response")
-    return response?.steik_info?.map((item: any) => item?.token_id)
-  }
-
+  const [borrowFetchData, setBorrowFetchData] = useState([])
+  const [interestData, setInterestData] = useState([])
   const { connectedWallet, accounts } = useWallet()
   const { cosmWasmClient: queryClient } = useCosmWasmClient()
   const [selectedItems, setSelectedItems] = useState<
@@ -91,40 +77,63 @@ export default function Borrow() {
     })
     setSelectedItems(updatedItems)
   }
-  // useEffect(() => {
-  //   console.log(accounts)
-  //   if (connectedWallet && queryClient) {
-  //     setIsNFTLoading(true)
-  //     fetchUnsteikCount().then((res: Array<string>) => {
-  //       if (res?.length != 0) {
-  //         const fetchedItems = res?.map((item: string, index: number) => ({
-  //           id: index,
-  //           kind: item,
-  //           title: item,
-  //           selected: false,
-  //         }))
-  //         console.log(fetchedItems, "fetchedItems----")
-  //         setSelectedItems(fetchedItems)
-  //       }
-  //       setIsNFTLoading(false)
-  //     })
-  //   }
-  //   if (!connectedWallet) {
-  //     setIsNFTLoading(false)
-  //     setSelectedItems([])
-  //   }
-  //   setStatisticLoading(true)
-  //   fetchStatistic().then((res: any) => {
-  //     if (res?.length != 0) {
-  //       setTotalStaked(parseInt(res?.total_staked))
-  //       setTotalClaimedPoints(parseInt(res?.total_claimed_points) / 1000000)
-  //       setStatisticLoading(false)
-  //     }
-  //   })
-  // }, [accounts, connectedWallet, queryClient])
+  const fetchBorrowData = async () => {
+    const response = await queryClient?.queryContractSmart(
+      process.env.NEXT_PUBLIC_LENDER_ADDRESS || "",
+      {
+        get_offer_list_by_collection: {
+          collection_address: process.env.NEXT_PUBLIC_NFT_ADDRESS,
+        },
+      }
+    )
+    console.log(response)
+    return response
+  }
+
+  const getInterestData = async (collection_address: string, price: number) => {
+    console.log(collection_address, price)
+    const response = await queryClient?.queryContractSmart(
+      process.env.NEXT_PUBLIC_LENDER_ADDRESS || "",
+      {
+        get_reward: {
+          collection_address: collection_address,
+          amount: price.toString(),
+        },
+      }
+    )
+    console.log(response)
+    return response
+  }
+
+  useEffect(() => {
+    if (connectedWallet && queryClient) {
+      fetchBorrowData().then((res) => {
+        if (res?.length > 0) {
+          // console.log(res[0]?.floor, "twilight-0117")
+          setBorrowFetchData(res)
+        }
+      })
+    }
+  }, [queryClient])
+
+  useEffect(() => {
+    if (borrowFetchData?.length > 0) {
+      console.log(borrowFetchData, "twilight-01")
+      const _interestData = []
+      borrowFetchData.map((item: any) => {
+        getInterestData(item.collection_address, parseInt(item.price)).then(
+          (res) => {
+            _interestData.push(res)
+          }
+        )
+      })
+      setInterestData(_interestData)
+    }
+  }, [borrowFetchData])
+
   return (
     <section className="px-16 pb-3 pt-6">
-      <h1 className="font-inria mx-auto mb-5 text-left text-4xl text-custom sm:text-5xl md:text-6xl lg:text-7xl">
+      <h1 className="mx-auto mb-5 text-left font-inria text-4xl text-custom sm:text-5xl md:text-6xl lg:text-7xl">
         BORROW AGAINST YOUR NFTS
       </h1>
       <div className="flex items-center gap-3">
@@ -139,15 +148,15 @@ export default function Borrow() {
         <TableHeader>
           <TableRow>
             <TableHead className="w-[35%]">Collection</TableHead>
-            <TableHead className="w-[12%] text-right">Available pool</TableHead>
-            <TableHead className="w-[12%] text-right">Best offer</TableHead>
+            {/* <TableHead className="w-[12%] text-right">Available pool</TableHead> */}
+            <TableHead className="w-[12%] text-right">Offer Amount</TableHead>
             <TableHead className="w-[12%] text-center">Interest</TableHead>
             <TableHead className="w-[12%] text-center">Duration</TableHead>
             <TableHead className="w-[12%] text-center"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {lendData.map((item, index) => (
+          {borrowFetchData.map((item, index) => (
             <TableRow key={index}>
               <TableCell className="font-medium">
                 <div className="flex items-center gap-2">
@@ -161,22 +170,16 @@ export default function Borrow() {
                   {item.collection}
                 </div>
               </TableCell>
-              <TableCell className="font-medium ">
-                <div className="flex items-center justify-end gap-2 text-right">
-                  <Image src={seiWhiteIcon} alt="sei" />
-                  {item.pool}
-                </div>
-              </TableCell>
               <TableCell className="text-right font-medium">
                 <div className="flex items-center justify-end gap-2 text-right">
                   <Image src={seiWhiteIcon} alt="sei" />
-                  {item.offer}
+                  {item.price / 1000000}
                 </div>
               </TableCell>
               <TableCell className="text-center">
                 <div className="flex items-center justify-center gap-2 text-center text-lg font-bold text-[#76FF6A]">
                   <Image src={seiWhiteIcon} alt="sei" />
-                  {item.interest}
+                  {(interestData[index] - item.price) / 1000000}
                 </div>
               </TableCell>
               <TableCell className="text-center font-medium">

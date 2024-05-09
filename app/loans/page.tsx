@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import seiWhiteIcon from "@/public/sei-white.svg"
-import { fetchStatistic } from "@/services/common/fetchStatistic"
 import { Separator } from "@radix-ui/react-separator"
 import { useCosmWasmClient, useWallet } from "@sei-js/react"
 import { Search } from "lucide-react"
@@ -96,17 +95,10 @@ export default function Loan() {
       setSelectedItems([])
     }
     setStatisticLoading(true)
-    fetchStatistic().then((res: any) => {
-      if (res?.length != 0) {
-        setTotalStaked(parseInt(res?.total_staked))
-        setTotalClaimedPoints(parseInt(res?.total_claimed_points) / 1000000)
-        setStatisticLoading(false)
-      }
-    })
   }, [accounts, connectedWallet, queryClient])
   return (
     <section className="px-16 pb-3 pt-6">
-      <h1 className="font-inria mx-auto mb-5 text-left text-4xl text-custom sm:text-5xl md:text-6xl lg:text-7xl">
+      <h1 className="mx-auto mb-5 text-left font-inria text-4xl text-custom sm:text-5xl md:text-6xl lg:text-7xl">
         MY LOANS
       </h1>
       {/* <div className="flex items-center gap-3">

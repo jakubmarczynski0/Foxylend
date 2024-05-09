@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { fetchStatistic } from "@/services/common/fetchStatistic"
 import { MsgExecuteContractEncodeObject } from "@cosmjs/cosmwasm-stargate"
 import {
   useCosmWasmClient,
@@ -49,13 +48,6 @@ export default function Dashboard() {
         setIsUserStatsLoading(false)
       })
     }
-    fetchStatistic().then((res: any) => {
-      if (res?.length !== 0) {
-        setTotalStaked(parseInt(res?.total_staked))
-        setTotalClaimedPoints(parseInt(res?.total_claimed_points) / 1000000)
-        setIsCollectionLoading(false)
-      }
-    })
   }
   const handleClaim = async () => {
     let transactions: MsgExecuteContractEncodeObject[] = []
