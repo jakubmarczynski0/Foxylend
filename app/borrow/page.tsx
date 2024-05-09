@@ -4,10 +4,19 @@ import { useEffect, useState } from "react"
 import Image from "next/image"
 import foxIcon from "@/public/foxylend-logo.svg"
 import seiWhiteIcon from "@/public/sei-white.svg"
+import { fetchFloorData } from "@/services/common/fetchFloorData"
+import { MsgExecuteContractEncodeObject } from "@cosmjs/cosmwasm-stargate"
+import { coins } from "@cosmjs/launchpad"
 import { Separator } from "@radix-ui/react-separator"
-import { useCosmWasmClient, useWallet } from "@sei-js/react"
+import {
+  useCosmWasmClient,
+  useSigningCosmWasmClient,
+  useWallet,
+} from "@sei-js/react"
 import { Search } from "lucide-react"
+import toast from "react-hot-toast"
 
+import useContract from "@/hooks/useContract"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
@@ -55,19 +64,18 @@ const lendData = [
 
 export default function Borrow() {
   const [openModal, setOpenModal] = useState(false)
-
-  const [totalStaked, setTotalStaked] = useState(0)
+  const [floorData, setFloorData] = useState(0)
+  const [lendFetchData, setLendData] = useState([])
   const [borrowFetchData, setBorrowFetchData] = useState([])
   const [interestData, setInterestData] = useState([])
+  const [currentLendData, setCurrentData] = useState()
+  const { createExecuteMessage } = useContract()
   const { connectedWallet, accounts } = useWallet()
   const { cosmWasmClient: queryClient } = useCosmWasmClient()
+  const { signingCosmWasmClient: signingClient } = useSigningCosmWasmClient()
   const [selectedItems, setSelectedItems] = useState<
     Array<{ id: number; kind: string; title: string; selected: boolean }>
-  >([
-    { id: 1, kind: "1", title: "1", selected: false },
-    { id: 2, kind: "2", title: "2", selected: false },
-    { id: 3, kind: "3", title: "3", selected: false },
-  ])
+  >([])
   const toggleSelectedItem = (id: number) => {
     const updatedItems = selectedItems.map((item) => {
       if (item.id === id) {
@@ -86,12 +94,23 @@ export default function Borrow() {
         },
       }
     )
+    return response.offer_info
+  }
+
+  const fetchFoxData = async () => {
+    const response = await queryClient?.queryContractSmart(
+      process.env.NEXT_PUBLIC_NFT_ADDRESS || "",
+      {
+        tokens: {
+          owner: accounts[0]?.address,
+        },
+      }
+    )
     console.log(response)
-    return response
+    return response.tokens
   }
 
   const getInterestData = async (collection_address: string, price: number) => {
-    console.log(collection_address, price)
     const response = await queryClient?.queryContractSmart(
       process.env.NEXT_PUBLIC_LENDER_ADDRESS || "",
       {
@@ -101,8 +120,105 @@ export default function Borrow() {
         },
       }
     )
-    console.log(response)
     return response
+  }
+
+  const fetchLendData = async () => {
+    const response = await queryClient?.queryContractSmart(
+      process.env.NEXT_PUBLIC_LENDER_ADDRESS || "",
+      {
+        get_collection_info: {
+          collection_address: [process.env.NEXT_PUBLIC_NFT_ADDRESS],
+        },
+      }
+    )
+    return response?.collections_info
+  }
+
+  const handleSteik = async () => {
+    const checkedItems = selectedItems.filter((item) => item.selected === true)
+    console.log(checkedItems, "here")
+    // if(checkedItems)
+    let transactions: MsgExecuteContractEncodeObject[] = []
+
+    if (checkedItems.length === 1) {
+      console.log(
+        {
+          token_id: checkedItems[0].title?.toString(),
+          spender: process.env.NEXT_PUBLIC_LENDER_ADDRESS,
+        },
+        "check here"
+      )
+      transactions = [
+        createExecuteMessage({
+          senderAddress: accounts[0]?.address,
+          contractAddress: process.env.NEXT_PUBLIC_NFT_ADDRESS || "",
+          message: {
+            approve: {
+              token_id: checkedItems[0].title?.toString(),
+              spender: process.env.NEXT_PUBLIC_LENDER_ADDRESS,
+            },
+          },
+        }),
+        createExecuteMessage({
+          senderAddress: accounts[0]?.address,
+          contractAddress: process.env.NEXT_PUBLIC_LENDER_ADDRESS || "",
+          message: {
+            borrow: {
+              offer_id: (currentLendData as any)?.offer_id,
+              token_id: checkedItems[0].title?.toString(),
+            },
+          },
+        }),
+      ]
+    }
+    if (!transactions.length) {
+      toast.error("Sorry☹️, failed steiking!", {
+        position: "top-right",
+      })
+      return
+    }
+    const fee = {
+      amount: [{ amount: "0.1", denom: "usei" }],
+      gas: (checkedItems.length * 700000).toString(),
+    }
+    signingClient
+      ?.signAndBroadcast(accounts[0]?.address, transactions, fee)
+      .then((res) => {
+        if (res.code !== 0) {
+          throw new Error(res.rawLog)
+        }
+        toast.success("Succeed in steiking. Good👍Luck!!", {
+          position: "top-right",
+        })
+      })
+      .catch((e) => {
+        console.log("debug error", e, typeof e)
+        toast.error("Sorry☹️, failed steiking!", {
+          position: "top-right",
+        })
+      })
+      .finally(() => {
+        console.log("refetch")
+        setOpenModal(false)
+        // setIsLoading(true)
+        // fetchSteikCount().then((res: Array<string>) => {
+        //   if (res?.length != 0) {
+        //     const fetchedItems = res?.map((item: string, index: number) => ({
+        //       id: index,
+        //       kind: item,
+        //       title: item,
+        //       selected: false,
+        //     }))
+        //     console.log(fetchedItems, "fetchedItems----")
+        //     setSelectedItems(fetchedItems)
+        //   }
+        //   if (res?.length === 0) {
+        //     setSelectedItems([])
+        //   }
+        //   setIsLoading(false)
+        // })
+      })
   }
 
   useEffect(() => {
@@ -118,18 +234,72 @@ export default function Borrow() {
 
   useEffect(() => {
     if (borrowFetchData?.length > 0) {
-      console.log(borrowFetchData, "twilight-01")
-      const _interestData = []
-      borrowFetchData.map((item: any) => {
-        getInterestData(item.collection_address, parseInt(item.price)).then(
-          (res) => {
-            _interestData.push(res)
-          }
-        )
+      let _interestData: any[] = []
+      let promises = borrowFetchData.map((item: any) => {
+        return getInterestData(item.collection_address, parseInt(item.price))
       })
-      setInterestData(_interestData)
+      Promise.all(promises)
+        .then((results) => {
+          _interestData = results
+          console.log(_interestData, "123123")
+          setInterestData(_interestData as never)
+          // You can now use _interestData here or do any further processing
+        })
+        .catch((error) => {
+          // Handle any errors that occurred during the fetching process
+        })
     }
   }, [borrowFetchData])
+
+  useEffect(() => {
+    if (connectedWallet && queryClient) {
+      fetchLendData().then((res) => {
+        if (res?.length != 0) {
+          const fetchedItems = res?.map((item: any, index: number) => ({
+            id: index,
+            offer: item.best_offer_price,
+            apy: parseFloat(item.collection_info.apy) * 100,
+            duration: item.collection_info.limit_time,
+          }))
+          setLendData(fetchedItems)
+        }
+      })
+
+      fetchFoxData().then((res) => {
+        if (res?.length > 0) {
+          setSelectedItems(
+            res?.map((item: any, index: number) => {
+              return {
+                id: parseInt(item),
+                title: parseInt(item),
+                kind: parseInt(item),
+                selected: false,
+              }
+            })
+          )
+          // console.log(res[0]?.floor, "123123")
+          // setFloorData(res[0]?.floor)
+        }
+      })
+    }
+    // setStatisticLoading(true)
+    // fetchStatistic().then((res: any) => {
+    //   if (res?.length != 0) {
+    //     setTotalStaked(parseInt(res?.total_staked))
+    //     setTotalClaimedPoints(parseInt(res?.total_claimed_points) / 1000000)
+    //     setStatisticLoading(false)
+    //   }
+    // })
+  }, [accounts, connectedWallet, queryClient])
+
+  useEffect(() => {
+    fetchFloorData().then((res) => {
+      if (res?.length > 0) {
+        console.log(res[0]?.floor, "123123")
+        setFloorData(res[0]?.floor)
+      }
+    })
+  }, [])
 
   return (
     <section className="px-16 pb-3 pt-6">
@@ -156,7 +326,7 @@ export default function Borrow() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {borrowFetchData.map((item, index) => (
+          {borrowFetchData.map((item: any, index) => (
             <TableRow key={index}>
               <TableCell className="font-medium">
                 <div className="flex items-center gap-2">
@@ -183,13 +353,35 @@ export default function Borrow() {
                 </div>
               </TableCell>
               <TableCell className="text-center font-medium">
-                {item.duration}
+                {lendFetchData[index] &&
+                  (lendFetchData[index] as { duration: number }).duration}
+                D
               </TableCell>
               <TableCell className="text-center font-medium">
                 <Button
                   className="whitespace-nowrap px-6 py-2 text-lg font-bold md:text-xl"
                   onClick={() => {
                     setOpenModal(true)
+                    console.log(
+                      {
+                        ...item,
+                        duration:
+                          lendFetchData[index] &&
+                          (lendFetchData[index] as { duration: number })
+                            .duration,
+                        apy: (lendFetchData[index] as any)?.apy,
+                        floor: floorData,
+                        repayAmount: interestData[index],
+                      },
+                      "123123"
+                    )
+                    setCurrentData({
+                      ...item,
+                      duration: (lendFetchData[index] as any)?.duration,
+                      apy: (lendFetchData[index] as any)?.apy,
+                      floor: floorData,
+                      repayAmount: interestData[index],
+                    })
                   }}
                 >
                   BORROW
@@ -210,17 +402,21 @@ export default function Borrow() {
           <div className="flex w-full justify-between px-10">
             <div className="flex flex-col items-center gap-2">
               <p className=" text-lg font-extralight">APY</p>
-              <p className="text-xl font-bold text-[#76FF6A]">180%</p>
+              <p className="text-xl font-bold text-[#76FF6A]">
+                {(currentLendData as any)?.apy}%
+              </p>
             </div>
             <div className="flex flex-col items-center gap-2">
               <p className=" text-lg font-extralight">Duration</p>
-              <p className="text-xl font-bold">14D</p>
+              <p className="text-xl font-bold">
+                {(currentLendData as any)?.duration}D
+              </p>
             </div>
             <div className="flex flex-col items-center gap-2">
               <p className=" text-lg font-extralight">FLOOR</p>
               <div className="flex items-center justify-end gap-1 text-right">
                 <Image src={seiWhiteIcon} alt="sei" />
-                23.5
+                {(currentLendData as any)?.floor}
               </div>
             </div>
           </div>
@@ -236,19 +432,26 @@ export default function Borrow() {
               />
             ))}
           </div>
-          <p>1 NFT Selected</p>
+          {/* <p> NFT Selected</p>
           <div className=" flex items-center justify-end gap-1 text-right">
             <Image src={seiWhiteIcon} alt="sei" />
             <b className="text-lg">20.5</b>
-          </div>
-          <Button className="whitespace-nowrap px-3 py-1 text-lg font-bold md:text-xl">
+          </div> */}
+          <Button
+            className="whitespace-nowrap px-3 py-1 text-lg font-bold md:text-xl"
+            onClick={() => {
+              handleSteik()
+            }}
+          >
             Borrow
           </Button>
           <div className=" flex items-center justify-end gap-1 text-right">
             Repay
-            <b className="text-lg">36.08</b>
+            <b className="text-lg">
+              {parseInt((currentLendData as any)?.repayAmount) / 1000000}
+            </b>
             <Image src={seiWhiteIcon} alt="sei" />
-            in 14 days.
+            in {(currentLendData as any)?.duration} days.
           </div>
         </DialogContent>
       </Dialog>

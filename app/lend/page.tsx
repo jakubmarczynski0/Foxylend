@@ -126,11 +126,11 @@ export default function Lend() {
         if (res.code !== 0) {
           throw new Error(res.rawLog)
         }
-        alert("Succeed in claiming. Good👍Luck!!")
+        alert("Succeed in lending. Good👍Luck!!")
       })
       .catch((e) => {
         console.log("debug error", e, typeof e)
-        alert("Sorry☹️, failed betting!!")
+        alert("Sorry☹️, failed lending!!")
       })
       .finally(() => {
         console.log("refetch")
@@ -243,14 +243,14 @@ export default function Lend() {
               <TableCell className="text-right font-medium">
                 <div className="flex items-center justify-end gap-2 text-right">
                   <Image src={seiWhiteIcon} alt="sei" />
-                  {item?.offer}
+                  {(item as any)?.offer}
                 </div>
               </TableCell>
               <TableCell className="text-center text-lg font-bold text-[#76FF6A]">
-                {item?.apy + "%"}
+                {(item as any)?.apy + "%"}
               </TableCell>
               <TableCell className="text-center font-medium">
-                {item?.duration + "D"}
+                {(item as any)?.duration + "D"}
               </TableCell>
               <TableCell className="text-center font-medium">
                 <Button
@@ -280,12 +280,14 @@ export default function Lend() {
             <div className="flex flex-col items-center gap-2">
               <p className=" text-lg font-extralight">APY</p>
               <p className="text-xl font-bold text-[#76FF6A]">
-                {currentLendData?.apy}%
+                {(currentLendData as any)?.apy}%
               </p>
             </div>
             <div className="flex flex-col items-center gap-2">
               <p className=" text-lg font-extralight">Duration</p>
-              <p className="text-xl font-bold">{currentLendData?.duration}D</p>
+              <p className="text-xl font-bold">
+                {(currentLendData as any)?.duration}D
+              </p>
             </div>
             <div className="flex flex-col items-center gap-2">
               <p className=" text-lg font-extralight">FLOOR</p>

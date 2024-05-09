@@ -113,8 +113,8 @@ export default function Offer() {
         //   if (res?.length != 0) {
         //     const fetchedItems = res?.map((item: string, index: number) => ({
         //       id: index,
-        //       kind: item.slice(3),
-        //       title: item.slice(3),
+        //       kind: (item as any)?.slice(3),
+        //       title: (item as any)?.slice(3),
         //       selected: false,
         //     }))
         //     console.log(fetchedItems, "fetchedItems----")
@@ -142,9 +142,9 @@ export default function Offer() {
     if (connectedWallet && queryClient) {
       fetchLendData().then((res) => {
         if (res?.length != 0) {
-          const fetchedItems = res?.map((item, index) => ({
-            apy: parseFloat(item.collection_info.apy) * 100,
-            duration: item.collection_info.limit_time,
+          const fetchedItems = res?.map((item: any, index: number) => ({
+            apy: parseFloat((item as any)?.collection_info.apy) * 100,
+            duration: (item as any)?.collection_info.limit_time,
           }))
           console.log(fetchedItems, "fetchedItems----")
           setLendData(fetchedItems)
@@ -166,15 +166,23 @@ export default function Offer() {
 
   useEffect(() => {
     if (offerData?.length > 0) {
-      const _interestData = []
-      offerData.map((item: any) => {
-        getInterestData(item.collection_address, parseInt(item.price)).then(
-          (res) => {
-            _interestData.push(res)
-          }
+      let _interestData = []
+      let promises = offerData.map((item: any) => {
+        return getInterestData(
+          (item as any)?.collection_address,
+          parseInt((item as any)?.price)
         )
       })
-      setInterestData(_interestData)
+      Promise.all(promises)
+        .then((results) => {
+          _interestData = results
+          console.log(_interestData, "123123")
+          setInterestData(_interestData as never)
+          // You can now use _interestData here or do any further processing
+        })
+        .catch((error) => {
+          // Handle any errors that occurred during the fetching process
+        })
     }
   }, [offerData])
 
@@ -220,20 +228,20 @@ export default function Offer() {
               <TableCell className="font-medium ">
                 <div className="flex items-center justify-end gap-2 text-right">
                   <Image src={seiWhiteIcon} alt="sei" />
-                  {item.price / 1000000}
+                  {(item as any)?.price / 1000000}
                 </div>
               </TableCell>
               <TableCell className="text-right font-medium">
                 <div className="flex items-center justify-end gap-2 text-right">
                   <Image src={seiWhiteIcon} alt="sei" />
-                  {(interestData[index] - item.price) / 1000000}
+                  {(interestData[index] - (item as any)?.price) / 1000000}
                 </div>
               </TableCell>
               <TableCell className="text-center text-lg font-bold text-[#76FF6A]">
-                {lendFetchData[index]?.apy}%
+                {(lendFetchData[index] as any)?.apy}%
               </TableCell>
               <TableCell className="text-center font-medium">
-                {item.status === "not_accepted"
+                {(item as any)?.status === "not_accepted"
                   ? "Seeking borrowers"
                   : "Accepted"}
               </TableCell>
@@ -241,9 +249,9 @@ export default function Offer() {
                 <Button
                   className="whitespace-nowrap px-6 py-2 text-lg font-bold md:text-xl"
                   variant={"red"}
-                  disabled={!(item.status === "not_accepted")}
+                  disabled={!((item as any)?.status === "not_accepted")}
                   onClick={() => {
-                    handleRevoke(item.offer_id)
+                    handleRevoke((item as any)?.offer_id)
                   }}
                 >
                   Revoke
