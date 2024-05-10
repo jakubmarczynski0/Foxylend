@@ -173,7 +173,7 @@ export default function Borrow() {
       ]
     }
     if (!transactions.length) {
-      toast.error("Sorry☹️, failed steiking!", {
+      toast.error("Sorry☹️, failed borrowing!", {
         position: "top-right",
       })
       return
@@ -188,13 +188,13 @@ export default function Borrow() {
         if (res.code !== 0) {
           throw new Error(res.rawLog)
         }
-        toast.success("Succeed in steiking. Good👍Luck!!", {
+        toast.success("Succeed in borrowing. Good👍Luck!!", {
           position: "top-right",
         })
       })
       .catch((e) => {
         console.log("debug error", e, typeof e)
-        toast.error("Sorry☹️, failed steiking!", {
+        toast.error("Sorry☹️, failed borrowing!", {
           position: "top-right",
         })
       })

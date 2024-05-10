@@ -243,7 +243,7 @@ export default function Lend() {
               <TableCell className="text-right font-medium">
                 <div className="flex items-center justify-end gap-2 text-right">
                   <Image src={seiWhiteIcon} alt="sei" />
-                  {(item as any)?.offer}
+                  {(item as any)?.offer / 1000000}
                 </div>
               </TableCell>
               <TableCell className="text-center text-lg font-bold text-[#76FF6A]">
