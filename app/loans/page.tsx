@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
+import foxCollectionIcon from "@/public/nft/fox_collection.png"
 import seiWhiteIcon from "@/public/sei-white.svg"
 import { MsgExecuteContractEncodeObject } from "@cosmjs/cosmwasm-stargate"
 import { Separator } from "@radix-ui/react-separator"
@@ -184,13 +185,12 @@ export default function Loan() {
             <TableRow key={index}>
               <TableCell className="font-medium">
                 <div className="flex items-center gap-2">
-                  <Avatar>
-                    <AvatarImage
-                      src="https://github.com/shadcn.png"
-                      alt="@shadcn"
-                    />
-                    <AvatarFallback>CN</AvatarFallback>
-                  </Avatar>
+                  <Image
+                    src={foxCollectionIcon}
+                    height={50}
+                    width={50}
+                    alt="sei"
+                  />
                   {}
                 </div>
               </TableCell>

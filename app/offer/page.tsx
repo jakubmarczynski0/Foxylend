@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
+import foxCollectionIcon from "@/public/nft/fox_collection.png"
 import seiWhiteIcon from "@/public/sei-white.svg"
 import { MsgExecuteContractEncodeObject } from "@cosmjs/cosmwasm-stargate"
 import { Separator } from "@radix-ui/react-separator"
@@ -10,6 +11,7 @@ import {
   useSigningCosmWasmClient,
   useWallet,
 } from "@sei-js/react"
+import axios from "axios"
 
 import useContract from "@/hooks/useContract"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -48,14 +50,11 @@ export default function Offer() {
     return response?.offer_info
   }
   const fetchLendData = async () => {
-    const response = await queryClient?.queryContractSmart(
-      process.env.NEXT_PUBLIC_LENDER_ADDRESS || "",
-      {
-        get_collection_info: {
-          collection_address: [process.env.NEXT_PUBLIC_NFT_ADDRESS],
-        },
-      }
-    )
+    const response = await axios
+      .get(`${process.env.NEXT_PUBLIC_BACKEND}/lend/collection_info`)
+      .then((res) => res.data)
+      .catch((error) => console.log("error", error))
+
     return response?.collections_info
   }
 
@@ -215,14 +214,12 @@ export default function Offer() {
             <TableRow key={index}>
               <TableCell className="font-medium">
                 <div className="flex items-center gap-2">
-                  <Avatar>
-                    <AvatarImage
-                      src="https://github.com/shadcn.png"
-                      alt="@shadcn"
-                    />
-                    <AvatarFallback>CN</AvatarFallback>
-                  </Avatar>
-                  {""}
+                  <Image
+                    src={foxCollectionIcon}
+                    height={50}
+                    width={50}
+                    alt="sei"
+                  />
                 </div>
               </TableCell>
               <TableCell className="font-medium ">

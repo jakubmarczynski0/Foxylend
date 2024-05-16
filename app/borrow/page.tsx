@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import foxIcon from "@/public/foxylend-logo.svg"
+import foxCollectionIcon from "@/public/nft/fox_collection.png"
 import seiWhiteIcon from "@/public/sei-white.svg"
 import { fetchFloorData } from "@/services/common/fetchFloorData"
 import { MsgExecuteContractEncodeObject } from "@cosmjs/cosmwasm-stargate"
@@ -13,11 +14,12 @@ import {
   useSigningCosmWasmClient,
   useWallet,
 } from "@sei-js/react"
+import axios from "axios"
 import { Search } from "lucide-react"
 import toast from "react-hot-toast"
 
 import useContract from "@/hooks/useContract"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+// import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -124,14 +126,11 @@ export default function Borrow() {
   }
 
   const fetchLendData = async () => {
-    const response = await queryClient?.queryContractSmart(
-      process.env.NEXT_PUBLIC_LENDER_ADDRESS || "",
-      {
-        get_collection_info: {
-          collection_address: [process.env.NEXT_PUBLIC_NFT_ADDRESS],
-        },
-      }
-    )
+    const response = await axios
+      .get(`${process.env.NEXT_PUBLIC_BACKEND}/lend/collection_info`)
+      .then((res) => res.data)
+      .catch((error) => console.log("error", error))
+
     return response?.collections_info
   }
 
@@ -330,14 +329,12 @@ export default function Borrow() {
             <TableRow key={index}>
               <TableCell className="font-medium">
                 <div className="flex items-center gap-2">
-                  <Avatar>
-                    <AvatarImage
-                      src="https://github.com/shadcn.png"
-                      alt="@shadcn"
-                    />
-                    <AvatarFallback>CN</AvatarFallback>
-                  </Avatar>
-                  {item.collection}
+                  <Image
+                    src={foxCollectionIcon}
+                    height={50}
+                    width={50}
+                    alt="sei"
+                  />
                 </div>
               </TableCell>
               <TableCell className="text-right font-medium">

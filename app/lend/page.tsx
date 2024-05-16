@@ -4,6 +4,7 @@ import internal from "stream"
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import foxIcon from "@/public/foxylend-logo.svg"
+import foxCollectionIcon from "@/public/nft/fox_collection.png"
 import seiWhiteIcon from "@/public/sei-white.svg"
 import { fetchFloorData } from "@/services/common/fetchFloorData"
 import { MsgExecuteContractEncodeObject } from "@cosmjs/cosmwasm-stargate"
@@ -13,10 +14,11 @@ import {
   useSigningCosmWasmClient,
   useWallet,
 } from "@sei-js/react"
+import axios from "axios"
 import { Search } from "lucide-react"
 
 import useContract from "@/hooks/useContract"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+// import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -84,19 +86,23 @@ export default function Lend() {
     Array<{ id: number; kind: string; title: string; selected: boolean }>
   >([])
   const fetchLendData = async () => {
-    const response = await queryClient?.queryContractSmart(
-      process.env.NEXT_PUBLIC_LENDER_ADDRESS || "",
-      {
-        get_collection_info: {
-          collection_address: [process.env.NEXT_PUBLIC_NFT_ADDRESS],
-        },
-      }
-    )
+    const response = await axios
+      .get(`${process.env.NEXT_PUBLIC_BACKEND}/lend/collection_info`)
+      .then((res) => res.data)
+      .catch((error) => console.log("error", error))
+
     return response?.collections_info
+
+    console.log("backend response", response)
   }
 
   const handleLend = async () => {
     let transactions: MsgExecuteContractEncodeObject[] = []
+
+    if (lendAmount > floorData) {
+      alert("You can not lend with higher price than floor price. ☹️")
+      return
+    }
 
     transactions = [
       createExecuteMessage({
@@ -164,7 +170,7 @@ export default function Lend() {
 
   useEffect(() => {
     console.log(lendAmount)
-    if (lendAmount * 2 > balance) {
+    if (lendAmount > balance) {
       setValueError(true)
     } else {
       setValueError(false)
@@ -230,14 +236,12 @@ export default function Lend() {
             <TableRow key={index}>
               <TableCell className="font-medium">
                 <div className="flex items-center gap-2">
-                  <Avatar>
-                    <AvatarImage
-                      src="https://github.com/shadcn.png"
-                      alt="@shadcn"
-                    />
-                    <AvatarFallback>CN</AvatarFallback>
-                  </Avatar>
-                  {1}
+                  <Image
+                    src={foxCollectionIcon}
+                    height={50}
+                    width={50}
+                    alt="sei"
+                  />
                 </div>
               </TableCell>
               <TableCell className="text-right font-medium">
@@ -312,7 +316,7 @@ export default function Lend() {
           </div>
           {valueError ? (
             <div className="mt-2 flex items-center justify-center text-center text-[red]">
-              Lend amount must be less than half of your balance amount.
+              Your balance is not enough.
             </div>
           ) : (
             <></>
