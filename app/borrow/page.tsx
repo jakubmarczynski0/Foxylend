@@ -97,7 +97,7 @@ export default function Borrow() {
       }
     )
 
-    let borrow_data = []
+    let borrow_data: any = []
     response.offer_info.map((item: any) => {
       if (item.status != "accepted") borrow_data.push(item)
     })
