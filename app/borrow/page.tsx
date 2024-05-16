@@ -96,7 +96,12 @@ export default function Borrow() {
         },
       }
     )
-    return response.offer_info
+
+    let borrow_data = []
+    response.offer_info.map((item: any) => {
+      if (item.status != "accepted") borrow_data.push(item)
+    })
+    return borrow_data
   }
 
   const fetchFoxData = async () => {
